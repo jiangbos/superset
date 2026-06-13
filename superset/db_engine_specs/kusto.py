@@ -129,6 +129,12 @@ class KustoSqlEngineSpec(BaseEngineSpec):  # pylint: disable=abstract-method
     )
 
     @classmethod
+    def _add_hour_offset(cls, expr: str, hours: int) -> str:
+        if hours == 0:
+            return expr
+        return f"DATEADD(HOUR, {hours}, {expr})"
+
+    @classmethod
     def get_dbapi_exception_mapping(cls) -> dict[type[Exception], type[Exception]]:
         # pylint: disable=import-outside-toplevel,import-error
         import sqlalchemy_kusto.errors as kusto_exceptions

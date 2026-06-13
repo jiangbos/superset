@@ -106,6 +106,39 @@ def test_time_exp_mixed_case_col_1y() -> None:
 
 
 @pytest.mark.parametrize(
+    "time_grain,offset,expected_result",
+    [
+        (
+            "P1D",
+            -4,
+            "DATEADD(HOUR, 4, DATEADD(DAY, DATEDIFF(DAY, 0,"
+            " DATEADD(HOUR, -4, [MixedCase])), 0))",
+        ),
+        (
+            "P1D",
+            5,
+            "DATEADD(HOUR, -5, DATEADD(DAY, DATEDIFF(DAY, 0,"
+            " DATEADD(HOUR, 5, [MixedCase])), 0))",
+        ),
+        (
+            "P1D",
+            0,
+            "DATEADD(DAY, DATEDIFF(DAY, 0, [MixedCase]), 0)",
+        ),
+    ],
+)
+def test_time_exp_with_offset(
+    time_grain: str, offset: int, expected_result: str
+) -> None:
+    from superset.db_engine_specs.mssql import MssqlEngineSpec
+
+    col = column("MixedCase")
+    expr = MssqlEngineSpec.get_timestamp_expr(col, None, time_grain, offset=offset)
+    result = str(expr.compile(None, dialect=mssql.dialect()))
+    assert result == expected_result
+
+
+@pytest.mark.parametrize(
     "target_type,expected_result",
     [
         (

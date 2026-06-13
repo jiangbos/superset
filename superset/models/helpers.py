@@ -2971,7 +2971,10 @@ class ExploreMixin:  # pylint: disable=too-many-public-methods
             expression = template_processor.process_template(column["column_name"])
             col = sa.literal_column(expression, type_=type_)
 
-        time_expr = self.db_engine_spec.get_timestamp_expr(col, None, time_grain)
+        offset = getattr(self, "offset", 0) or 0
+        time_expr = self.db_engine_spec.get_timestamp_expr(
+            col, None, time_grain, offset=offset
+        )
         return self.make_sqla_column_compatible(time_expr, label)
 
     def convert_tbl_column_to_sqla_col(

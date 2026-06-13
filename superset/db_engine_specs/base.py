@@ -1061,11 +1061,31 @@ class BaseEngineSpec:  # pylint: disable=too-many-public-methods
         return database.get_sqla_engine(catalog=catalog, schema=schema, source=source)
 
     @classmethod
+    def _add_hour_offset(cls, expr: str, hours: int) -> str:
+        """
+        Return a SQL expression string that shifts ``expr`` by ``hours``.
+
+        The default implementation uses standard SQL ``INTERVAL`` syntax.
+        Engine specs whose dialects require different syntax (e.g. DATEADD)
+        should override this method.
+
+        :param expr: a SQL expression (may contain the ``{col}`` placeholder)
+        :param hours: number of hours to add (negative to subtract)
+        :return: wrapped SQL expression
+        """
+        if hours == 0:
+            return expr
+        if hours > 0:
+            return f"({expr} + INTERVAL '{hours}' HOUR)"
+        return f"({expr} - INTERVAL '{-hours}' HOUR)"
+
+    @classmethod
     def get_timestamp_expr(
         cls,
         col: ColumnClause,
         pdf: str | None,
         time_grain: str | None,
+        offset: int = 0,
     ) -> TimestampExpression:
         """
         Construct a TimestampExpression to be used in a SQLAlchemy query.
@@ -1073,6 +1093,9 @@ class BaseEngineSpec:  # pylint: disable=too-many-public-methods
         :param col: Target column for the TimestampExpression
         :param pdf: date format (seconds or milliseconds)
         :param time_grain: time grain, e.g. P1Y for 1 year
+        :param offset: dataset hour offset; when non-zero the column is shifted
+            before truncation and the result is shifted back so that day (and
+            coarser) boundaries align with the offset timezone.
         :return: TimestampExpression object
         """
         if time_grain:
@@ -1090,6 +1113,11 @@ class BaseEngineSpec:  # pylint: disable=too-many-public-methods
                 date_trunc_function = cls._date_trunc_functions.get(type_)
                 if date_trunc_function:
                     time_expr = time_expr.replace("{type}", type_)
+
+            if offset:
+                shifted_col = cls._add_hour_offset("{col}", offset)
+                time_expr = time_expr.replace("{col}", shifted_col)
+                time_expr = cls._add_hour_offset(time_expr, -offset)
         else:
             time_expr = "{col}"
 

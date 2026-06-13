@@ -123,6 +123,12 @@ class SqliteEngineSpec(BaseEngineSpec):
     }
 
     @classmethod
+    def _add_hour_offset(cls, expr: str, hours: int) -> str:
+        if hours == 0:
+            return expr
+        return f"DATETIME({expr}, '{hours:+d} hours')"
+
+    @classmethod
     def epoch_to_dttm(cls) -> str:
         return "datetime({col}, 'unixepoch')"
 

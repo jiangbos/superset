@@ -256,6 +256,47 @@ def test_timegrain_expressions(time_grain: str, expected_result: str) -> None:
     assert actual == expected_result
 
 
+@pytest.mark.parametrize(
+    "time_grain,offset,expected_result",
+    [
+        (
+            "P1D",
+            -4,
+            "(DATE_TRUNC('day', (col - INTERVAL '4' HOUR)) + INTERVAL '4' HOUR)",
+        ),
+        (
+            "P1D",
+            5,
+            "(DATE_TRUNC('day', (col + INTERVAL '5' HOUR)) - INTERVAL '5' HOUR)",
+        ),
+        (
+            "P1M",
+            -4,
+            "(DATE_TRUNC('month', (col - INTERVAL '4' HOUR)) + INTERVAL '4' HOUR)",
+        ),
+        (
+            "PT1H",
+            -4,
+            "(DATE_TRUNC('hour', (col - INTERVAL '4' HOUR)) + INTERVAL '4' HOUR)",
+        ),
+        (
+            "P1D",
+            0,
+            "DATE_TRUNC('day', col)",
+        ),
+    ],
+)
+def test_timegrain_expressions_with_offset(
+    time_grain: str, offset: int, expected_result: str
+) -> None:
+    actual = str(
+        spec.get_timestamp_expr(
+            col=column("col"), pdf=None, time_grain=time_grain, offset=offset
+        )
+    )
+    assert actual == expected_result
+
+
 def test_select_star(mocker: MockerFixture) -> None:
     """
     Test the ``select_star`` method.

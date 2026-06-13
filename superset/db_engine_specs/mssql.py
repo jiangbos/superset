@@ -160,6 +160,12 @@ class MssqlEngineSpec(BaseEngineSpec):
     }
 
     @classmethod
+    def _add_hour_offset(cls, expr: str, hours: int) -> str:
+        if hours == 0:
+            return expr
+        return f"DATEADD(HOUR, {hours}, {expr})"
+
+    @classmethod
     def epoch_to_dttm(cls) -> str:
         return "dateadd(S, {col}, '1970-01-01')"
 

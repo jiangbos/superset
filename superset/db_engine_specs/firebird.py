@@ -89,6 +89,12 @@ class FirebirdEngineSpec(BaseEngineSpec):
     }
 
     @classmethod
+    def _add_hour_offset(cls, expr: str, hours: int) -> str:
+        if hours == 0:
+            return expr
+        return f"DATEADD(HOUR, {hours}, {expr})"
+
+    @classmethod
     def epoch_to_dttm(cls) -> str:
         return "DATEADD(second, {col}, CAST('00:00:00' AS TIMESTAMP))"
 
