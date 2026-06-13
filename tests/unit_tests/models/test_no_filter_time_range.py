@@ -305,3 +305,49 @@ def test_temporal_range_filter_with_actual_dates_produces_time_filter(
         f"Expected no '1 = 1' for TEMPORAL_RANGE with actual dates, "
         f"got: {generated_sql}"
     )
+
+
+def test_temporal_range_filter_with_grain_uses_raw_column(
+    mocker: MockerFixture,
+    app: Flask,
+) -> None:
+    """TEMPORAL_RANGE filter with grain set must filter on the raw column.
+
+    Regression test: when a filter carries a ``grain`` key the WHERE clause
+    was incorrectly applied to the granulated expression
+    (e.g. ``DATETIME(col, 'start of year')``) instead of the raw datetime
+    column, producing wrong results and preventing index usage.
+    """
+    dataset = _make_dataset(mocker)
+
+    query_obj: QueryObjectDict = {
+        "granularity": "time_start",
+        "from_dttm": None,
+        "to_dttm": None,
+        "is_timeseries": False,
+        "extras": {"time_grain_sqla": "P1Y"},
+        "filter": [
+            {
+                "col": "time_start",
+                "op": "TEMPORAL_RANGE",
+                "val": "2024-06-01T00:00:00 : 2024-07-01T00:00:00",
+                "grain": "P1Y",
+            }
+        ],
+        "metrics": ["count"],
+        "columns": [],
+    }
+
+    with app.test_request_context():
+        sqla_query = dataset.get_query_str_extended(query_obj, mutate=False)
+        generated_sql = sqla_query.sql
+
+    where_pos = generated_sql.upper().find("WHERE")
+    assert where_pos != -1, f"Expected WHERE clause in SQL, got: {generated_sql}"
+    where_clause = generated_sql[where_pos:]
+    # SQLite year grain uses DATETIME(col, 'start of year'); it must NOT
+    # appear in the WHERE clause — the filter must use the raw column.
+    assert "start of year" not in where_clause.lower(), (
+        f"Time grain expression should not appear in WHERE clause, "
+        f"got: {where_clause}"
+    )
