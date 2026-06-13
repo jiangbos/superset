@@ -19,6 +19,7 @@ from datetime import datetime
 from typing import Optional
 
 import pytest
+from sqlalchemy import column
 from sqlalchemy.engine import create_engine
 
 from superset.constants import TimeGrain
@@ -129,3 +130,31 @@ def test_time_grain_expressions(dttm: str, grain: str, expected: str) -> None:  
     sql = f"SELECT {expression} FROM t"  # noqa: S608
     result = connection.execute(sql).scalar()
     assert result == expected
+
+
+@pytest.mark.parametrize(
+    "time_grain,offset,expected_result",
+    [
+        (
+            "P1D",
+            -4,
+            "DATETIME(DATETIME(DATETIME(col, '-4 hours'), 'start of day'), '+4 hours')",
+        ),
+        (
+            "P1D",
+            0,
+            "DATETIME(col, 'start of day')",
+        ),
+    ],
+)
+def test_time_grain_with_offset(
+    time_grain: str, offset: int, expected_result: str
+) -> None:
+    from superset.db_engine_specs.sqlite import SqliteEngineSpec
+
+    actual = str(
+        SqliteEngineSpec.get_timestamp_expr(
+            col=column("col"), pdf=None, time_grain=time_grain, offset=offset
+        )
+    )
+    assert actual == expected_result

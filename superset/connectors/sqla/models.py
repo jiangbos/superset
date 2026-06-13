@@ -1157,7 +1157,10 @@ class TableColumn(AuditMixinNullable, ImportExportMixin, CertificationMixin, Mod
             col = literal_column(expression, type_=type_)
         else:
             col = column(self.column_name, type_=type_)
-        time_expr = self.db_engine_spec.get_timestamp_expr(col, pdf, time_grain)
+        offset = getattr(self.table, "offset", 0) or 0
+        time_expr = self.db_engine_spec.get_timestamp_expr(
+            col, pdf, time_grain, offset=offset
+        )
         return self.database.make_sqla_column_compatible(time_expr, label)
 
     @property
@@ -1824,6 +1827,7 @@ class SqlaTable(
                 col=sqla_column,
                 pdf=pdf,
                 time_grain=time_grain,
+                offset=self.offset or 0,
             )
         return self.make_sqla_column_compatible(sqla_column, label), generic_type
 
